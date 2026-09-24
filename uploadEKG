@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gửi ảnh EKG Lên HIS</title>
+    <!-- Tải thư viện PeerJS -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 20px; background: #f0fdf4; color: #166534; }
+        .box { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
+        #status { font-weight: bold; margin-bottom: 15px; }
+        /* Tùy biến nút tải ảnh để bự và dễ bấm trên di động */
+        .upload-btn {
+            display: none; background: #22c55e; color: white; padding: 15px 25px; 
+            border-radius: 8px; font-size: 18px; text-decoration: none; border: none; width: 100%;
+        }
+        input[type="file"] { display: none; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2 style="margin-top:0">Chụp EKG Bệnh án</h2>
+        <p id="status">Đang kết nối tới máy tính...</p>
+        
+        <label for="fileInput" class="upload-btn" id="uploadLabel">📸 Chụp / Chọn Ảnh</label>
+        <!-- Thêm capture="environment" để ưu tiên mở camera sau -->
+        <input type="file" id="fileInput" accept="image/*" capture="environment">
+    </div>
+
+    <script>
+        const statusEl = document.getElementById('status');
+        const uploadLabel = document.getElementById('uploadLabel');
+        const fileInput = document.getElementById('fileInput');
+
+        // Lấy PeerID của máy tính từ URL (VD: ?peer=12345)
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetPeerId = urlParams.get('peer');
+
+        if (!targetPeerId) {
+            statusEl.innerText = "Lỗi: Không tìm thấy mã máy tính!";
+            statusEl.style.color = "red";
+        } else {
+            // Khởi tạo PeerJS trên điện thoại
+            const peer = new Peer();
+            let conn = null;
+
+            peer.on('open', (id) => {
+                statusEl.innerText = "Đang bắt tay với máy tính...";
+                // Kết nối tới máy tính
+                conn = peer.connect(targetPeerId, { reliable: true });
+
+                conn.on('open', () => {
+                    statusEl.innerText = "✅ Đã kết nối! Hãy chụp ảnh.";
+                    statusEl.style.color = "#15803d";
+                    uploadLabel.style.display = "block"; // Hiện nút chụp
+                });
+
+                conn.on('close', () => {
+                    statusEl.innerText = "❌ Đã ngắt kết nối với máy tính.";
+                    uploadLabel.style.display = "none";
+                });
+            });
+
+            // Khi bác sĩ chọn ảnh / chụp xong
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file || !conn) return;
+
+                statusEl.innerText = "⏳ Đang truyền ảnh sang máy tính...";
+                
+                // Gửi trực tiếp Object File qua WebRTC (PeerJS hỗ trợ tự động chia nhỏ - chunking)
+                conn.send({
+                    fileName: file.name,
+                    fileType: file.type,
+                    fileData: file 
+                });
+
+                // Cập nhật giao diện
+                setTimeout(() => {
+                    statusEl.innerText = "✅ Đã truyền xong!";
+                    fileInput.value = ""; // Xóa dữ liệu cũ để chụp tấm mới
+                }, 1000);
+            });
+        }
+    </script>
+</body>
+</html>
