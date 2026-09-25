@@ -4,64 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Máy Scan EKG Lên HIS</title>
-    <!-- Thư viện PeerJS (Truyền P2P) -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <!-- Thư viện Cropper.js (Cắt, Xoay ảnh chuyên nghiệp) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
-    
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; text-align: center; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        
-        /* Thanh trạng thái trên cùng */
         .header { background: #1e293b; padding: 12px; border-bottom: 1px solid #334155; }
         .header h3 { font-size: 16px; color: #4ade80; margin-bottom: 4px; }
         #status { font-size: 14px; color: #94a3b8; font-weight: 500; }
-
-        /* Màn hình chờ chụp ảnh */
         #startScreen { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
         .camera-btn {
-            display: none; background: #22c55e; color: white; padding: 18px 30px; 
-            border-radius: 50px; font-size: 18px; font-weight: bold; border: none; 
+            display: none; background: #22c55e; color: white; padding: 18px 30px;
+            border-radius: 50px; font-size: 18px; font-weight: bold; border: none;
             box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4); width: 85%; max-width: 320px;
             cursor: pointer; text-align: center;
         }
         input[type="file"] { display: none; }
-
-        /* Màn hình chỉnh sửa & Scan (Ẩn mặc định) */
         #editorScreen { display: none; flex: 1; flex-direction: column; height: calc(100vh - 60px); }
-        
-        /* Khu vực hiển thị ảnh Crop */
         .canvas-container { flex: 1; position: relative; background: #000; overflow: hidden; width: 100%; }
         #imageToCrop { max-width: 100%; display: block; }
-
-        /* hiệu ứng xem trước chế độ Scan trên khung cắt */
         .scan-mode-preview .cropper-view-box img,
         .scan-mode-preview .cropper-canvas img {
             filter: contrast(1.45) brightness(1.12) saturate(1.3);
         }
-
-        /* Thanh công cụ chỉnh sửa */
         .toolbar { background: #1e293b; padding: 10px; display: flex; justify-content: space-around; border-top: 1px solid #334155; }
-        .tool-btn { background: #334155; color: #fff; border: none; padding: 10px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; flex: 1; margin: 0 4px; cursor: pointer; transition: 0.2s; }
+        .tool-btn { background: #334155; color: #fff; border: none; padding: 10px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; flex: 1; margin: 0 4px; cursor: pointer; }
         .tool-btn.active { background: #3b82f6; color: #fff; box-shadow: 0 0 8px rgba(59, 130, 246, 0.6); }
-        .tool-btn:active { transform: scale(0.95); }
-
-        /* Thanh nút Gửi / Chụp lại */
         .action-bar { background: #0f172a; padding: 12px; display: flex; gap: 10px; }
         .btn-cancel { background: #ef4444; color: white; border: none; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; flex: 1; }
-        .btn-send { background: #22c55e; color: white; border: none; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; flex: 2; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3); }
+        .btn-send { background: #22c55e; color: white; border: none; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; flex: 2; }
     </style>
 </head>
 <body>
-
     <div class="header">
         <h3>MÁY SCAN ĐIỆN TÂM ĐỒ (EKG)</h3>
         <p id="status">🔄 Đang kết nối tới máy tính...</p>
     </div>
 
-    <!-- MÀN HÌNH 1: CHỤP ẢNH -->
     <div id="startScreen">
         <label for="fileInput" class="camera-btn" id="uploadLabel">📸 Mở Camera Chụp EKG</label>
         <input type="file" id="fileInput" accept="image/*" capture="environment">
@@ -70,21 +50,16 @@
         </p>
     </div>
 
-    <!-- MÀN HÌNH 2: CẮT, XOAY & SCAN (Hiện sau khi chụp) -->
     <div id="editorScreen">
         <div class="canvas-container" id="cropContainer">
             <img id="imageToCrop" src="">
         </div>
-        
-        <!-- Công cụ chỉnh hình -->
         <div class="toolbar">
             <button class="tool-btn" onclick="rotateImg(-90)">↺ Xoay Trái</button>
             <button class="tool-btn" onclick="rotateImg(90)">↻ Xoay Phải</button>
             <button class="tool-btn" onclick="resetCrop()">📐 Đặt lại</button>
             <button class="tool-btn active" id="btnScanFilter" onclick="toggleScanMode()">✨ Lọc Nền Scan</button>
         </div>
-
-        <!-- Nút thao tác chính -->
         <div class="action-bar">
             <button class="btn-cancel" onclick="cancelEdit()">📸 Chụp lại</button>
             <button class="btn-send" id="btnSend" onclick="processAndSend()">🚀 Gửi HIS & Đọc AI</button>
@@ -103,10 +78,9 @@
         const btnSend = document.getElementById('btnSend');
 
         let cropper = null;
-        let isScanMode = true; // Mặc định bật chế độ làm nét Scan
+        let isScanMode = true;
         let conn = null;
 
-        // 1. KẾT NỐI PEERJS TỚI MÁY TÍNH
         const urlParams = new URLSearchParams(window.location.search);
         const targetPeerId = urlParams.get('peer');
 
@@ -122,15 +96,22 @@
                     statusEl.style.color = "#4ade80";
                     uploadLabel.style.display = "block";
                 });
+                conn.on('error', (err) => {
+                    statusEl.innerText = "❌ Lỗi kết nối: " + err;
+                    statusEl.style.color = "#ef4444";
+                });
                 conn.on('close', () => {
                     statusEl.innerText = "❌ Đã ngắt kết nối với máy tính.";
                     statusEl.style.color = "#ef4444";
                     uploadLabel.style.display = "none";
                 });
             });
+            peer.on('error', (err) => {
+                statusEl.innerText = "❌ Không tìm thấy máy tính (" + err.type + ")";
+                statusEl.style.color = "#ef4444";
+            });
         }
 
-        // 2. KHI BÁC SĨ CHỤP ẢNH XONG -> MỞ TRÌNH CẮT & SCAN
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -140,16 +121,13 @@
                 startScreen.style.display = 'none';
                 editorScreen.style.display = 'flex';
                 statusEl.innerText = "✂️ Kéo 4 góc để cắt nền thừa và tên bệnh nhân";
-
                 imageToCrop.src = event.target.result;
 
                 if (cropper) cropper.destroy();
-                
-                // Khởi tạo khung cắt thông minh
                 cropper = new Cropper(imageToCrop, {
                     viewMode: 1,
-                    dragMode: 'move', // Cho phép di chuyển ảnh bên dưới
-                    autoCropArea: 0.85, // Tự động khoanh vùng 85% giữa ảnh (loại bỏ viền ngoài)
+                    dragMode: 'move',
+                    autoCropArea: 0.85,
                     restore: false,
                     guides: true,
                     center: true,
@@ -158,7 +136,6 @@
                     cropBoxResizable: true,
                     toggleDragModeOnDblclick: false,
                     ready() {
-                        // Áp dụng hiệu ứng hiển thị Scan mặc định
                         if (isScanMode) cropContainer.classList.add('scan-mode-preview');
                     }
                 });
@@ -166,24 +143,13 @@
             reader.readAsDataURL(file);
         });
 
-        // 3. CÁC HÀM ĐIỀU KHIỂN CÔNG CỤ CHỈNH HÌNH
-        function rotateImg(degree) {
-            if (cropper) cropper.rotate(degree);
-        }
-
-        function resetCrop() {
-            if (cropper) cropper.reset();
-        }
+        function rotateImg(degree) { if (cropper) cropper.rotate(degree); }
+        function resetCrop() { if (cropper) cropper.reset(); }
 
         function toggleScanMode() {
             isScanMode = !isScanMode;
-            if (isScanMode) {
-                btnScanFilter.classList.add('active');
-                cropContainer.classList.add('scan-mode-preview');
-            } else {
-                btnScanFilter.classList.remove('active');
-                cropContainer.classList.remove('scan-mode-preview');
-            }
+            btnScanFilter.classList.toggle('active', isScanMode);
+            cropContainer.classList.toggle('scan-mode-preview', isScanMode);
         }
 
         function cancelEdit() {
@@ -191,52 +157,65 @@
             fileInput.value = "";
             editorScreen.style.display = 'none';
             startScreen.style.display = 'flex';
-            statusEl.innerText = "✅ Sẵn sàng chụp ảnh mới.";
         }
 
-        // 4. THUẬT TOÁN XỬ LÝ ẢNH SCAN EKG & GỬI VỀ MÁY TÍNH
+        // Thuật toán làm trắng nền giấy EKG chạy trên cả iOS và Android
+        function applyEkgScannerFilter(canvas) {
+            const ctx = canvas.getContext('2d');
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const d = imgData.data;
+            const contrast = 1.45;
+            const intercept = 128 * (1 - contrast);
+
+            for (let i = 0; i < d.length; i += 4) {
+                let r = d[i] * contrast + intercept + 18;
+                let g = d[i + 1] * contrast + intercept + 18;
+                let b = d[i + 2] * contrast + intercept + 18;
+
+                // Khử bóng xám trên nền giấy nhưng giữ lại lưới hồng/đỏ và sóng đen
+                if (r > 195 && g > 185 && b > 185) {
+                    r = Math.min(255, r + 25);
+                    g = Math.min(255, g + 25);
+                    b = Math.min(255, b + 25);
+                }
+
+                d[i] = r < 0 ? 0 : (r > 255 ? 255 : r);
+                d[i + 1] = g < 0 ? 0 : (g > 255 ? 255 : g);
+                d[i + 2] = b < 0 ? 0 : (b > 255 ? 255 : b);
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+
         function processAndSend() {
             if (!cropper || !conn) return;
-            
             btnSend.innerText = "⏳ Đang xử lý & Gửi...";
             btnSend.disabled = true;
 
-            // Lấy vùng ảnh đã được cắt & xoay (Giới hạn kích thước tối đa 1800px để truyền siêu tốc)
             const croppedCanvas = cropper.getCroppedCanvas({
-                maxWidth: 1800,
-                maxHeight: 1800,
+                maxWidth: 1600,
+                maxHeight: 1600,
                 imageSmoothingEnabled: true,
                 imageSmoothingQuality: 'high'
             });
 
-            // Tạo Canvas cuối cùng để áp dụng bộ lọc PDF Scanner nếu bật
-            const finalCanvas = document.createElement('canvas');
-            finalCanvas.width = croppedCanvas.width;
-            finalCanvas.height = croppedCanvas.height;
-            const ctx = finalCanvas.getContext('2d');
-
             if (isScanMode) {
-                // Thuật toán tăng tương phản, khử bóng râm nhưng giữ lưới đỏ EKG
-                ctx.filter = 'contrast(1.45) brightness(1.12) saturate(1.3)';
+                applyEkgScannerFilter(croppedCanvas);
             }
-            
-            ctx.drawImage(croppedCanvas, 0, 0);
 
-            // Xuất ra File JPEG chất lượng cao (0.85) và bắn qua WebRTC
-            finalCanvas.toBlob((blob) => {
-                conn.send({
-                    fileName: "EKG_Scanned_" + Date.now() + ".jpg",
-                    fileType: "image/jpeg",
-                    fileData: blob
-                });
+            // Gửi dạng chuỗi Base64 (dataUrl) đảm bảo tương thích 100% mọi trình duyệt di động
+            const dataUrl = croppedCanvas.toDataURL('image/jpeg', 0.85);
+            conn.send({
+                fileName: "EKG_Scanned_" + Date.now() + ".jpg",
+                fileType: "image/jpeg",
+                dataUrl: dataUrl
+            });
 
+            setTimeout(() => {
                 statusEl.innerText = "✅ Đã gửi ảnh Scan sang máy tính!";
                 btnSend.innerText = "🚀 Gửi HIS & Đọc AI";
                 btnSend.disabled = false;
-                
-                // Quay về màn hình chính để sẵn sàng cho bệnh nhân tiếp theo
                 cancelEdit();
-            }, 'image/jpeg', 0.85);
+            }, 400);
         }
     </script>
 </body>
