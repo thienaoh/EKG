@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Máy Scan EKG Lên HIS</title>
-    <!-- Thư viện PeerJS (Truyền P2P trực tiếp vào RAM máy tính) -->
+    <!-- Thư viện PeerJS -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <!-- Thư viện Cropper.js (Cắt, Xoay ảnh chuyên nghiệp) -->
+    <!-- Thư viện Cropper.js -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     
@@ -14,12 +14,10 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; text-align: center; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
-        /* Thanh trạng thái trên cùng */
         .header { background: #1e293b; padding: 12px; border-bottom: 1px solid #334155; }
         .header h3 { font-size: 16px; color: #4ade80; margin-bottom: 4px; }
         #status { font-size: 14px; color: #94a3b8; font-weight: 500; }
 
-        /* Màn hình chờ chụp ảnh */
         #startScreen { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
         .camera-btn {
             display: none; background: #22c55e; color: white; padding: 18px 30px; 
@@ -29,14 +27,12 @@
         }
         input[type="file"] { display: none; }
 
-        /* Màn hình chỉnh sửa & Scan (Ẩn mặc định) */
         #editorScreen { display: none; flex: 1; flex-direction: column; height: calc(100vh - 60px); }
         
-        /* Khu vực hiển thị ảnh Crop */
         .canvas-container { flex: 1; position: relative; background: #000; overflow: hidden; width: 100%; }
         #imageToCrop { max-width: 100%; display: block; }
 
-        /* MẶC ĐỊNH LUÔN ÁP DỤNG LÀM SÁNG NỀN */
+        /* Mặc định luôn làm sáng nền EKG */
         .cropper-view-box img, .cropper-canvas img {
             filter: contrast(1.45) brightness(1.12) saturate(1.3);
         }
@@ -46,26 +42,19 @@
         .tool-btn { background: #334155; color: #fff; border: none; padding: 10px; border-radius: 8px; font-size: 13px; font-weight: 600; flex: 1; margin: 0 4px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 5px; }
         .tool-btn:active { transform: scale(0.95); }
 
-        /* Menu Độ Nghiêng (Ẩn mặc định) */
-        .tilt-menu { display: none; background: #111827; padding: 15px 10px; flex-direction: column; border-top: 1px solid #334155; }
-        .tilt-icons { display: flex; justify-content: center; gap: 25px; margin-bottom: 20px; }
-        .tilt-icon-btn { background: none; border: 2px solid transparent; color: #9ca3af; cursor: pointer; border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
-        .tilt-icon-btn.active { color: #fff; border-color: #4ade80; background: #1f2937; }
-        .tilt-icon-btn svg { width: 24px; height: 24px; }
+        /* Menu Độ Nghiêng (Chỉ chứa thước trượt) */
+        .tilt-menu { display: none; background: #111827; padding: 20px 15px; flex-direction: column; border-top: 1px solid #334155; }
+        .tilt-header { color: #9ca3af; font-size: 13px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
         
-        /* Thanh trượt thước đo */
         .slider-container { display: flex; align-items: center; gap: 10px; padding: 0 10px; }
         .slider-val { width: 30px; font-size: 12px; font-weight: bold; color: #fbbf24; text-align: center; }
         input[type=range] { flex: 1; -webkit-appearance: none; background: transparent; height: 30px; position: relative; }
         input[type=range]:focus { outline: none; }
-        /* Giả lập vạch thước đo */
         input[type=range]::before { content: ""; position: absolute; top: 50%; left: 0; right: 0; height: 12px; transform: translateY(-50%); background: repeating-linear-gradient(to right, #64748b 0, #64748b 2px, transparent 2px, transparent 8%); z-index: -1; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 24px; width: 4px; background: #fbbf24; border-radius: 2px; cursor: pointer; margin-top: -6px; }
 
-        /* Nút Xong cho menu độ nghiêng */
-        .tilt-done-btn { background: #3b82f6; color: white; border: none; padding: 8px 0; border-radius: 6px; font-weight: bold; margin-top: 15px; cursor: pointer; }
+        .tilt-done-btn { background: #3b82f6; color: white; border: none; padding: 10px 0; border-radius: 6px; font-weight: bold; margin-top: 20px; cursor: pointer; font-size: 14px; }
 
-        /* Thanh nút Gửi / Chụp lại */
         .action-bar { background: #0f172a; padding: 12px; display: flex; gap: 10px; }
         .btn-cancel { background: #ef4444; color: white; border: none; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; flex: 1; cursor: pointer; }
         .btn-send { background: #22c55e; color: white; border: none; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; flex: 2; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3); cursor: pointer; }
@@ -87,7 +76,7 @@
         </p>
     </div>
 
-    <!-- MÀN HÌNH 2: CẮT, XOAY & CHỈNH NGHIÊNG (Hiện sau khi chụp) -->
+    <!-- MÀN HÌNH 2: CẮT, XOAY & CHỈNH NGHIÊNG -->
     <div id="editorScreen">
         <div class="canvas-container" id="cropContainer">
             <img id="imageToCrop" src="">
@@ -109,22 +98,9 @@
             </button>
         </div>
 
-        <!-- Menu Độ Nghiêng (Như iPhone) -->
+        <!-- Menu Độ Nghiêng -->
         <div class="tilt-menu" id="tiltMenu">
-            <div class="tilt-icons">
-                <!-- Nút 1: Straighten -->
-                <button class="tilt-icon-btn active" id="btnTiltRotate" onclick="setTiltMode('rotate')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
-                </button>
-                <!-- Nút 2: Vertical Perspective -->
-                <button class="tilt-icon-btn" id="btnTiltVertical" onclick="setTiltMode('vertical')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="8,4 16,4 20,20 4,20"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
-                </button>
-                <!-- Nút 3: Horizontal Perspective -->
-                <button class="tilt-icon-btn" id="btnTiltHorizontal" onclick="setTiltMode('horizontal')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="4,8 20,4 20,20 4,16"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
-                </button>
-            </div>
+            <div class="tilt-header">Chỉnh góc nghiêng</div>
             <div class="slider-container">
                 <span class="slider-val" id="sliderValDisplay">0</span>
                 <input type="range" id="tiltSlider" min="-45" max="45" value="0" step="1">
@@ -156,11 +132,11 @@
         let cropper = null;
         let conn = null;
         
-        // Trạng thái menu độ nghiêng
-        let currentTiltMode = 'rotate';
-        let tiltValues = { rotate: 0, vertical: 0, horizontal: 0 };
+        // Quản lý biến xoay tách biệt để không bị xung đột
+        let baseRotation = 0;
+        let tiltRotation = 0;
 
-        // 1. KẾT NỐI PEERJS TỚI MÁY TÍNH
+        // 1. KẾT NỐI PEERJS
         const urlParams = new URLSearchParams(window.location.search);
         const targetPeerId = urlParams.get('peer');
 
@@ -184,7 +160,7 @@
             });
         }
 
-        // 2. KHI CHỤP ẢNH XONG -> KHỞI TẠO CROPPER
+        // 2. KHỞI TẠO CROPPER
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -199,13 +175,16 @@
 
                 if (cropper) cropper.destroy();
                 
-                // Reset thông số nghiêng
-                tiltValues = { rotate: 0, vertical: 0, horizontal: 0 };
+                // Reset toàn bộ thông số xoay/nghiêng
+                baseRotation = 0;
+                tiltRotation = 0;
+                tiltSlider.value = 0;
+                sliderValDisplay.innerText = "0";
                 
                 cropper = new Cropper(imageToCrop, {
                     viewMode: 1,
-                    dragMode: 'crop',    // Vuốt để vẽ khung mới
-                    autoCrop: false,     // Không tự thả khung ban đầu
+                    dragMode: 'crop',    // Vuốt để vẽ khung
+                    autoCrop: false,     // Không thả khung tự động
                     restore: false,
                     guides: true,
                     center: true,
@@ -218,16 +197,30 @@
             reader.readAsDataURL(file);
         });
 
-        // 3. CÁC HÀM THANH CÔNG CỤ CHÍNH
+        // 3. ĐIỀU KHIỂN XOAY VÀ ĐẶT LẠI
+        function applyTransformations() {
+            if (cropper) {
+                // Áp dụng xoay tuyệt đối cộng dồn: Góc xoay 90 độ + Góc thước trượt
+                cropper.rotateTo(baseRotation + tiltRotation);
+            }
+        }
+
         function rotateImg() {
-            if (cropper) cropper.rotate(-90); // Xoay ngược chiều kim đồng hồ
+            if (!cropper) return;
+            baseRotation -= 90; // Xoay ngược chiều kim đồng hồ
+            applyTransformations();
         }
 
         function clearCrop() {
             if (cropper) {
-                cropper.reset(); // Đưa ảnh về mặc định (bỏ xoay/nghiêng)
-                cropper.clear(); // Xóa khung crop hiện tại
-                tiltValues = { rotate: 0, vertical: 0, horizontal: 0 };
+                // Reset khung và góc xoay về mặc định ban đầu
+                baseRotation = 0;
+                tiltRotation = 0;
+                tiltSlider.value = 0;
+                sliderValDisplay.innerText = "0";
+                cropper.reset();
+                cropper.clear();
+                applyTransformations();
             }
         }
 
@@ -244,7 +237,6 @@
             mainToolbar.style.display = 'none';
             actionBar.style.display = 'none';
             tiltMenu.style.display = 'flex';
-            setTiltMode('rotate'); // Mặc định mở nút 1
         }
 
         function closeTiltMenu() {
@@ -253,48 +245,17 @@
             actionBar.style.display = 'flex';
         }
 
-        function setTiltMode(mode) {
-            currentTiltMode = mode;
-            // Cập nhật UI nút
-            document.getElementById('btnTiltRotate').classList.remove('active');
-            document.getElementById('btnTiltVertical').classList.remove('active');
-            document.getElementById('btnTiltHorizontal').classList.remove('active');
-            
-            if (mode === 'rotate') document.getElementById('btnTiltRotate').classList.add('active');
-            if (mode === 'vertical') document.getElementById('btnTiltVertical').classList.add('active');
-            if (mode === 'horizontal') document.getElementById('btnTiltHorizontal').classList.add('active');
-
-            // Cập nhật giá trị thanh trượt
-            tiltSlider.value = tiltValues[mode];
-            sliderValDisplay.innerText = tiltValues[mode];
-        }
-
-        // Lắng nghe thanh trượt thay đổi
+        // Lắng nghe thanh trượt
         tiltSlider.addEventListener('input', function(e) {
-            const val = parseInt(e.target.value);
-            sliderValDisplay.innerText = val;
-            tiltValues[currentTiltMode] = val;
+            tiltRotation = parseInt(e.target.value);
+            sliderValDisplay.innerText = tiltRotation;
             applyTransformations();
         });
 
-        function applyTransformations() {
-            if (!cropper) return;
-            
-            // Xoay ảnh (Straighten)
-            cropper.rotateTo(tiltValues.rotate);
-
-            // Giả lập phối cảnh dọc/ngang bằng Scale Stretch (do Canvas 2D không hỗ trợ 3D Matrix)
-            let scaleX = 1 + (tiltValues.horizontal / 100);
-            let scaleY = 1 + (tiltValues.vertical / 100);
-            
-            cropper.scale(scaleX, scaleY);
-        }
-
-        // 5. XỬ LÝ NÉN & GỬI THẲNG VỀ RAM MÁY TÍNH
+        // 5. GỬI ẢNH QUA WEBRTC
         function processAndSend() {
             if (!cropper || !conn) return;
             
-            // Nếu người dùng chưa vẽ khung, báo lỗi nhẹ
             const cropData = cropper.getCropBoxData();
             if (Object.keys(cropData).length === 0 || cropData.width === 0) {
                 alert("Vui lòng vuốt tay lên ảnh để khoanh vùng băng giấy điện tim trước khi gửi!");
@@ -316,11 +277,11 @@
             finalCanvas.height = croppedCanvas.height;
             const ctx = finalCanvas.getContext('2d');
 
-            // Mặc định luôn làm sáng, nét ảnh
+            // Bộ lọc sáng nền
             ctx.filter = 'contrast(1.45) brightness(1.12) saturate(1.3)';
             ctx.drawImage(croppedCanvas, 0, 0);
 
-            // Truyền dữ liệu Base64
+            // Nén JPEG 0.80
             const dataUrl = finalCanvas.toDataURL('image/jpeg', 0.80);
             conn.send({
                 fileName: "EKG_Scanned_" + Date.now() + ".jpg",
