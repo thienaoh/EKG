@@ -36,17 +36,34 @@
         .canvas-container { flex: 1; position: relative; background: #000; overflow: hidden; width: 100%; }
         #imageToCrop { max-width: 100%; display: block; }
 
-        /* Hiệu ứng xem trước chế độ làm sáng Scan trên khung cắt */
-        .scan-mode-preview .cropper-view-box img,
-        .scan-mode-preview .cropper-canvas img {
+        /* MẶC ĐỊNH LUÔN ÁP DỤNG LÀM SÁNG NỀN */
+        .cropper-view-box img, .cropper-canvas img {
             filter: contrast(1.45) brightness(1.12) saturate(1.3);
         }
 
-        /* Thanh công cụ chỉnh sửa */
+        /* Thanh công cụ chính */
         .toolbar { background: #1e293b; padding: 10px; display: flex; justify-content: space-around; border-top: 1px solid #334155; }
-        .tool-btn { background: #334155; color: #fff; border: none; padding: 10px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; flex: 1; margin: 0 4px; cursor: pointer; transition: 0.2s; }
-        .tool-btn.active { background: #3b82f6; color: #fff; box-shadow: 0 0 8px rgba(59, 130, 246, 0.6); }
+        .tool-btn { background: #334155; color: #fff; border: none; padding: 10px; border-radius: 8px; font-size: 13px; font-weight: 600; flex: 1; margin: 0 4px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 5px; }
         .tool-btn:active { transform: scale(0.95); }
+
+        /* Menu Độ Nghiêng (Ẩn mặc định) */
+        .tilt-menu { display: none; background: #111827; padding: 15px 10px; flex-direction: column; border-top: 1px solid #334155; }
+        .tilt-icons { display: flex; justify-content: center; gap: 25px; margin-bottom: 20px; }
+        .tilt-icon-btn { background: none; border: 2px solid transparent; color: #9ca3af; cursor: pointer; border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .tilt-icon-btn.active { color: #fff; border-color: #4ade80; background: #1f2937; }
+        .tilt-icon-btn svg { width: 24px; height: 24px; }
+        
+        /* Thanh trượt thước đo */
+        .slider-container { display: flex; align-items: center; gap: 10px; padding: 0 10px; }
+        .slider-val { width: 30px; font-size: 12px; font-weight: bold; color: #fbbf24; text-align: center; }
+        input[type=range] { flex: 1; -webkit-appearance: none; background: transparent; height: 30px; position: relative; }
+        input[type=range]:focus { outline: none; }
+        /* Giả lập vạch thước đo */
+        input[type=range]::before { content: ""; position: absolute; top: 50%; left: 0; right: 0; height: 12px; transform: translateY(-50%); background: repeating-linear-gradient(to right, #64748b 0, #64748b 2px, transparent 2px, transparent 8%); z-index: -1; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 24px; width: 4px; background: #fbbf24; border-radius: 2px; cursor: pointer; margin-top: -6px; }
+
+        /* Nút Xong cho menu độ nghiêng */
+        .tilt-done-btn { background: #3b82f6; color: white; border: none; padding: 8px 0; border-radius: 6px; font-weight: bold; margin-top: 15px; cursor: pointer; }
 
         /* Thanh nút Gửi / Chụp lại */
         .action-bar { background: #0f172a; padding: 12px; display: flex; gap: 10px; }
@@ -66,28 +83,59 @@
         <label for="fileInput" class="camera-btn" id="uploadLabel">📸 Mở Camera Chụp EKG</label>
         <input type="file" id="fileInput" accept="image/*" capture="environment">
         <p style="margin-top: 20px; font-size: 13px; color: #64748b; max-width: 280px;">
-            Mẹo: Chụp ngang điện thoại và kéo thả vùng băng giấy điện tim để ảnh rõ nét và gọn nhẹ nhất.
+            Mẹo: Chụp ngang điện thoại và tự do vẽ khung chọn vùng băng giấy điện tim để ảnh rõ nét nhất.
         </p>
     </div>
 
-    <!-- MÀN HÌNH 2: CẮT, XOAY & LÀM SÁNG (Hiện sau khi chụp) -->
+    <!-- MÀN HÌNH 2: CẮT, XOAY & CHỈNH NGHIÊNG (Hiện sau khi chụp) -->
     <div id="editorScreen">
         <div class="canvas-container" id="cropContainer">
             <img id="imageToCrop" src="">
         </div>
         
-        <!-- Công cụ chỉnh hình -->
-        <div class="toolbar">
-            <button class="tool-btn" onclick="rotateImg(-90)">↺ Xoay Trái</button>
-            <button class="tool-btn" onclick="rotateImg(90)">↻ Xoay Phải</button>
-            <button class="tool-btn" onclick="resetCrop()">📐 Đặt lại</button>
-            <button class="tool-btn active" id="btnScanFilter" onclick="toggleScanMode()">✨ Làm Sáng Nền</button>
+        <!-- Thanh công cụ chính -->
+        <div class="toolbar" id="mainToolbar">
+            <button class="tool-btn" onclick="rotateImg()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                Xoay
+            </button>
+            <button class="tool-btn" onclick="clearCrop()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                Đặt lại
+            </button>
+            <button class="tool-btn" onclick="openTiltMenu()">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
+                Độ nghiêng
+            </button>
+        </div>
+
+        <!-- Menu Độ Nghiêng (Như iPhone) -->
+        <div class="tilt-menu" id="tiltMenu">
+            <div class="tilt-icons">
+                <!-- Nút 1: Straighten -->
+                <button class="tilt-icon-btn active" id="btnTiltRotate" onclick="setTiltMode('rotate')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+                </button>
+                <!-- Nút 2: Vertical Perspective -->
+                <button class="tilt-icon-btn" id="btnTiltVertical" onclick="setTiltMode('vertical')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="8,4 16,4 20,20 4,20"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+                </button>
+                <!-- Nút 3: Horizontal Perspective -->
+                <button class="tilt-icon-btn" id="btnTiltHorizontal" onclick="setTiltMode('horizontal')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="4,8 20,4 20,20 4,16"/><line x1="2" y1="12" x2="22" y2="12"/></svg>
+                </button>
+            </div>
+            <div class="slider-container">
+                <span class="slider-val" id="sliderValDisplay">0</span>
+                <input type="range" id="tiltSlider" min="-45" max="45" value="0" step="1">
+            </div>
+            <button class="tilt-done-btn" onclick="closeTiltMenu()">Xong</button>
         </div>
 
         <!-- Nút thao tác chính -->
-        <div class="action-bar">
-            <button class="btn-cancel" onclick="cancelEdit()">📸 Chụp lại</button>
-            <button class="btn-send" id="btnSend" onclick="processAndSend()">🚀 Gửi Ảnh Lên HIS</button>
+        <div class="action-bar" id="actionBar">
+            <button class="btn-cancel" onclick="cancelEdit()">Chụp lại</button>
+            <button class="btn-send" id="btnSend" onclick="processAndSend()">Gửi Ảnh Lên HIS</button>
         </div>
     </div>
 
@@ -98,13 +146,19 @@
         const startScreen = document.getElementById('startScreen');
         const editorScreen = document.getElementById('editorScreen');
         const imageToCrop = document.getElementById('imageToCrop');
-        const cropContainer = document.getElementById('cropContainer');
-        const btnScanFilter = document.getElementById('btnScanFilter');
+        const mainToolbar = document.getElementById('mainToolbar');
+        const tiltMenu = document.getElementById('tiltMenu');
+        const actionBar = document.getElementById('actionBar');
+        const tiltSlider = document.getElementById('tiltSlider');
+        const sliderValDisplay = document.getElementById('sliderValDisplay');
         const btnSend = document.getElementById('btnSend');
 
         let cropper = null;
-        let isScanMode = true; // Mặc định bật chế độ làm sáng rõ nét
         let conn = null;
+        
+        // Trạng thái menu độ nghiêng
+        let currentTiltMode = 'rotate';
+        let tiltValues = { rotate: 0, vertical: 0, horizontal: 0 };
 
         // 1. KẾT NỐI PEERJS TỚI MÁY TÍNH
         const urlParams = new URLSearchParams(window.location.search);
@@ -130,7 +184,7 @@
             });
         }
 
-        // 2. KHI CHỤP ẢNH XONG -> MỞ KHUNG CHỌN VÙNG ĐIỆN TIM & XOAY
+        // 2. KHI CHỤP ẢNH XONG -> KHỞI TẠO CROPPER
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -139,48 +193,41 @@
             reader.onload = (event) => {
                 startScreen.style.display = 'none';
                 editorScreen.style.display = 'flex';
-                statusEl.innerText = "✂️ Vuốt tay lên ảnh để vẽ khung chọn vùng điện tim";
+                statusEl.innerText = "✂️ Vuốt tự do để vẽ khung điện tim";
 
                 imageToCrop.src = event.target.result;
 
                 if (cropper) cropper.destroy();
                 
+                // Reset thông số nghiêng
+                tiltValues = { rotate: 0, vertical: 0, horizontal: 0 };
+                
                 cropper = new Cropper(imageToCrop, {
                     viewMode: 1,
-                    dragMode: 'crop', // Đã chuyển sang 'crop' giúp vuốt tự do vẽ khung mới thay vì làm trượt ảnh
-                    autoCropArea: 0.85,
+                    dragMode: 'crop',    // Vuốt để vẽ khung mới
+                    autoCrop: false,     // Không tự thả khung ban đầu
                     restore: false,
                     guides: true,
                     center: true,
                     highlight: false,
                     cropBoxMovable: true,
                     cropBoxResizable: true,
-                    toggleDragModeOnDblclick: false,
-                    ready() {
-                        if (isScanMode) cropContainer.classList.add('scan-mode-preview');
-                    }
+                    toggleDragModeOnDblclick: false
                 });
             };
             reader.readAsDataURL(file);
         });
 
-        // 3. CÁC HÀM ĐIỀU KHIỂN XOAY TRÁI, XOAY PHẢI, ĐẶT LẠI, LÀM SÁNG
-        function rotateImg(degree) {
-            if (cropper) cropper.rotate(degree);
+        // 3. CÁC HÀM THANH CÔNG CỤ CHÍNH
+        function rotateImg() {
+            if (cropper) cropper.rotate(-90); // Xoay ngược chiều kim đồng hồ
         }
 
-        function resetCrop() {
-            if (cropper) cropper.reset();
-        }
-
-        function toggleScanMode() {
-            isScanMode = !isScanMode;
-            if (isScanMode) {
-                btnScanFilter.classList.add('active');
-                cropContainer.classList.add('scan-mode-preview');
-            } else {
-                btnScanFilter.classList.remove('active');
-                cropContainer.classList.remove('scan-mode-preview');
+        function clearCrop() {
+            if (cropper) {
+                cropper.reset(); // Đưa ảnh về mặc định (bỏ xoay/nghiêng)
+                cropper.clear(); // Xóa khung crop hiện tại
+                tiltValues = { rotate: 0, vertical: 0, horizontal: 0 };
             }
         }
 
@@ -192,14 +239,71 @@
             statusEl.innerText = "✅ Sẵn sàng chụp ảnh mới.";
         }
 
-        // 4. XỬ LÝ LÀM SÁNG, NÉN GỌN NHẸ & GỬI THẲNG VỀ RAM MÁY TÍNH
+        // 4. XỬ LÝ MENU ĐỘ NGHIÊNG
+        function openTiltMenu() {
+            mainToolbar.style.display = 'none';
+            actionBar.style.display = 'none';
+            tiltMenu.style.display = 'flex';
+            setTiltMode('rotate'); // Mặc định mở nút 1
+        }
+
+        function closeTiltMenu() {
+            tiltMenu.style.display = 'none';
+            mainToolbar.style.display = 'flex';
+            actionBar.style.display = 'flex';
+        }
+
+        function setTiltMode(mode) {
+            currentTiltMode = mode;
+            // Cập nhật UI nút
+            document.getElementById('btnTiltRotate').classList.remove('active');
+            document.getElementById('btnTiltVertical').classList.remove('active');
+            document.getElementById('btnTiltHorizontal').classList.remove('active');
+            
+            if (mode === 'rotate') document.getElementById('btnTiltRotate').classList.add('active');
+            if (mode === 'vertical') document.getElementById('btnTiltVertical').classList.add('active');
+            if (mode === 'horizontal') document.getElementById('btnTiltHorizontal').classList.add('active');
+
+            // Cập nhật giá trị thanh trượt
+            tiltSlider.value = tiltValues[mode];
+            sliderValDisplay.innerText = tiltValues[mode];
+        }
+
+        // Lắng nghe thanh trượt thay đổi
+        tiltSlider.addEventListener('input', function(e) {
+            const val = parseInt(e.target.value);
+            sliderValDisplay.innerText = val;
+            tiltValues[currentTiltMode] = val;
+            applyTransformations();
+        });
+
+        function applyTransformations() {
+            if (!cropper) return;
+            
+            // Xoay ảnh (Straighten)
+            cropper.rotateTo(tiltValues.rotate);
+
+            // Giả lập phối cảnh dọc/ngang bằng Scale Stretch (do Canvas 2D không hỗ trợ 3D Matrix)
+            let scaleX = 1 + (tiltValues.horizontal / 100);
+            let scaleY = 1 + (tiltValues.vertical / 100);
+            
+            cropper.scale(scaleX, scaleY);
+        }
+
+        // 5. XỬ LÝ NÉN & GỬI THẲNG VỀ RAM MÁY TÍNH
         function processAndSend() {
             if (!cropper || !conn) return;
             
-            btnSend.innerText = "⏳ Đang xử lý & Gửi...";
+            // Nếu người dùng chưa vẽ khung, báo lỗi nhẹ
+            const cropData = cropper.getCropBoxData();
+            if (Object.keys(cropData).length === 0 || cropData.width === 0) {
+                alert("Vui lòng vuốt tay lên ảnh để khoanh vùng băng giấy điện tim trước khi gửi!");
+                return;
+            }
+
+            btnSend.innerText = "⏳ Đang xử lý...";
             btnSend.disabled = true;
 
-            // Thu gọn kích thước tối đa 1600px giúp ảnh sắc nét nhưng dung lượng cực nhẹ
             const croppedCanvas = cropper.getCroppedCanvas({
                 maxWidth: 1600,
                 maxHeight: 1600,
@@ -212,27 +316,24 @@
             finalCanvas.height = croppedCanvas.height;
             const ctx = finalCanvas.getContext('2d');
 
-            if (isScanMode) {
-                // Tăng tương phản, làm sáng nền giấy và giữ rõ lưới đỏ EKG
-                ctx.filter = 'contrast(1.45) brightness(1.12) saturate(1.3)';
-            }
-            
+            // Mặc định luôn làm sáng, nét ảnh
+            ctx.filter = 'contrast(1.45) brightness(1.12) saturate(1.3)';
             ctx.drawImage(croppedCanvas, 0, 0);
 
-            // Nén chuẩn JPEG (0.80) gọn nhẹ và truyền qua WebRTC thẳng vào RAM máy tính
-            finalCanvas.toBlob((blob) => {
-                conn.send({
-                    fileName: "EKG_Scanned_" + Date.now() + ".jpg",
-                    fileType: "image/jpeg",
-                    fileData: blob
-                });
+            // Truyền dữ liệu Base64
+            const dataUrl = finalCanvas.toDataURL('image/jpeg', 0.80);
+            conn.send({
+                fileName: "EKG_Scanned_" + Date.now() + ".jpg",
+                fileType: "image/jpeg",
+                dataUrl: dataUrl
+            });
 
+            setTimeout(() => {
                 statusEl.innerText = "✅ Đã gửi ảnh sang máy tính!";
                 btnSend.innerText = "🚀 Gửi Ảnh Lên HIS";
                 btnSend.disabled = false;
-                
                 cancelEdit();
-            }, 'image/jpeg', 0.80);
+            }, 400);
         }
     </script>
 </body>
