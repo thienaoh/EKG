@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Máy Scan EKG Lên HIS</title>
-    <!-- Thư viện PeerJS -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <!-- Thư viện Cropper.js -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     
@@ -16,7 +14,7 @@
         
         .header { background: #1e293b; padding: 12px; border-bottom: 1px solid #334155; }
         .header h3 { font-size: 16px; color: #4ade80; margin-bottom: 4px; }
-        #status { font-size: 14px; color: #94a3b8; font-weight: 500; }
+        #status { font-size: 14px; color: #94a3b8; font-weight: 500; padding: 0 10px; }
 
         #startScreen { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
         .camera-btn {
@@ -28,7 +26,6 @@
         input[type="file"] { display: none; }
 
         #editorScreen { display: none; flex: 1; flex-direction: column; height: calc(100vh - 60px); }
-        
         .canvas-container { flex: 1; position: relative; background: #000; overflow: hidden; width: 100%; }
         #imageToCrop { max-width: 100%; display: block; }
 
@@ -55,25 +52,16 @@
         .action-bar { background: #0f172a; padding: 12px; display: flex; gap: 10px; }
         .btn-cancel { background: #ef4444; color: white; border: none; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; flex: 1; cursor: pointer; }
         .btn-send { background: #22c55e; color: white; border: none; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; flex: 2; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3); cursor: pointer; }
-        
-        /* Cảnh báo Zalo */
-        #zaloWarning { display: none; background: #ef4444; color: white; padding: 15px; margin: 20px; border-radius: 8px; font-size: 14px; font-weight: bold; line-height: 1.5; }
     </style>
 </head>
 <body>
 
     <div class="header">
         <h3>MÁY SCAN ĐIỆN TÂM ĐỒ (EKG)</h3>
-        <p id="status">🔄 Đang thiết lập đường truyền...</p>
+        <p id="status">🔄 Đang khởi tạo kết nối...</p>
     </div>
 
     <div id="startScreen">
-        <div id="zaloWarning">
-            ⚠️ BẠN ĐANG MỞ BẰNG ZALO/FACEBOOK<br><br>
-            Các ứng dụng này chặn camera và đường truyền nội bộ.<br>
-            Vui lòng nhấn vào dấu 3 chấm (góc trên bên phải) và chọn "Mở bằng trình duyệt" (Safari/Chrome).
-        </div>
-        
         <label for="fileInput" class="camera-btn" id="uploadLabel">📸 Mở Camera Chụp EKG</label>
         <input type="file" id="fileInput" accept="image/*" capture="environment">
         <p style="margin-top: 20px; font-size: 13px; color: #64748b; max-width: 280px;">
@@ -129,63 +117,65 @@
         const tiltSlider = document.getElementById('tiltSlider');
         const sliderValDisplay = document.getElementById('sliderValDisplay');
         const btnSend = document.getElementById('btnSend');
-        const zaloWarning = document.getElementById('zaloWarning');
 
         let cropper = null;
         let conn = null;
         let baseRotation = 0;
         let tiltRotation = 0;
 
-        // KIỂM TRA TRÌNH DUYỆT IN-APP (ZALO/FB)
-        const ua = navigator.userAgent || navigator.vendor || window.opera;
-        if (ua.indexOf("Zalo") > -1 || ua.indexOf("FB") > -1 || ua.indexOf("Messenger") > -1) {
-            zaloWarning.style.display = "block";
-            statusEl.innerText = "❌ Bị chặn bởi Zalo/FB";
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetPeerId = urlParams.get('peer');
+
+        if (!targetPeerId) {
+            statusEl.innerText = "❌ Lỗi: Vui lòng quét mã QR lại từ máy tính!";
             statusEl.style.color = "#ef4444";
         } else {
-            // 1. KẾT NỐI PEERJS TỚI MÁY TÍNH
-            const urlParams = new URLSearchParams(window.location.search);
-            const targetPeerId = urlParams.get('peer');
+            // Tích hợp máy chủ STUN của Google để vượt tường lửa mạng bệnh viện
+            const peer = new Peer({
+                config: {
+                    'iceServers': [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' }
+                    ]
+                }
+            });
 
-            if (!targetPeerId) {
-                statusEl.innerText = "❌ Lỗi: Vui lòng quét mã QR từ máy tính!";
-                statusEl.style.color = "#ef4444";
-            } else {
-                // Thêm máy chủ STUN của Google để đảm bảo vượt tường lửa ổn định
-                const peer = new Peer({
-                    config: {
-                        'iceServers': [
-                            { urls: 'stun:stun.l.google.com:19302' },
-                            { urls: 'stun:stun1.l.google.com:19302' }
-                        ]
-                    }
-                });
-
-                peer.on('open', () => {
-                    statusEl.innerText = "Đang kết nối tới máy tính...";
-                    conn = peer.connect(targetPeerId, { reliable: true });
-                    
-                    conn.on('open', () => {
-                        statusEl.innerText = "✅ Đã kết nối máy tính! Sẵn sàng chụp.";
-                        statusEl.style.color = "#4ade80";
-                        uploadLabel.style.display = "block";
-                    });
-                    
-                    conn.on('close', () => {
-                        statusEl.innerText = "❌ Đã ngắt kết nối với máy tính.";
+            peer.on('open', () => {
+                statusEl.innerText = "Đang tìm máy tính trong mạng...";
+                
+                // Cảnh báo nếu treo quá 8 giây
+                let isConnected = false;
+                setTimeout(() => {
+                    if (!isConnected) {
+                        statusEl.innerText = "❌ Mạng bệnh viện chặn kết nối. Hãy tắt Wi-Fi, dùng 4G và F5 lại trang trên máy tính!";
                         statusEl.style.color = "#ef4444";
-                        uploadLabel.style.display = "none";
-                    });
+                    }
+                }, 8000);
+
+                conn = peer.connect(targetPeerId, { reliable: true });
+                
+                conn.on('open', () => {
+                    isConnected = true;
+                    statusEl.innerText = "✅ Đã kết nối máy tính! Sẵn sàng chụp.";
+                    statusEl.style.color = "#4ade80";
+                    uploadLabel.style.display = "block";
                 });
 
-                peer.on('error', (err) => {
-                    statusEl.innerText = "❌ Lỗi kết nối P2P: " + err.type;
+                conn.on('close', () => {
+                    statusEl.innerText = "❌ Đã ngắt kết nối với máy tính.";
                     statusEl.style.color = "#ef4444";
+                    uploadLabel.style.display = "none";
                 });
-            }
+            });
+
+            peer.on('error', (err) => {
+                statusEl.innerText = "❌ Lỗi kết nối P2P: " + err.type;
+                statusEl.style.color = "#ef4444";
+            });
         }
 
-        // 2. KHỞI TẠO CROPPER
+        // Khởi tạo Cropper
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
