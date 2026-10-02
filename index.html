@@ -4,116 +4,68 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Máy Scan EKG Lên HIS</title>
-    <!-- Thư viện PeerJS -->
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <!-- Thư viện Cropper.js -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        
-        /* KHÓA THAO TÁC VUỐT HỆ THỐNG (Khắc phục trượt màn hình khi kéo viền Crop) */
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            background: #0f172a; 
-            color: #f8fafc; 
-            text-align: center; 
-            height: 100vh; 
-            display: flex; 
-            flex-direction: column; 
-            overflow: hidden;
-            overscroll-behavior: none; /* Chống kéo màn hình Refresh */
-            touch-action: none; /* Chống vuốt mép màn hình để Back */
-            -webkit-user-select: none; /* Chống bôi đen text khi vuốt */
-            user-select: none;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; text-align: center; height: 100vh; display: flex; flex-direction: column; overflow: hidden; overscroll-behavior: none; touch-action: none; user-select: none; }
         
         .header { background: #1e293b; padding: 12px; border-bottom: 1px solid #334155; }
         .header h3 { font-size: 16px; color: #4ade80; margin-bottom: 4px; }
         #status { font-size: 14px; color: #94a3b8; font-weight: 500; padding: 0 10px; }
 
         #startScreen { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
-        .camera-btn {
-            display: none; background: #22c55e; color: white; padding: 18px 30px; 
-            border-radius: 50px; font-size: 18px; font-weight: bold; border: none; 
-            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4); width: 85%; max-width: 320px;
-            cursor: pointer; text-align: center;
-        }
+        .camera-btn { display: none; background: #22c55e; color: white; padding: 18px 30px; border-radius: 50px; font-size: 18px; font-weight: bold; border: none; box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4); width: 85%; max-width: 320px; cursor: pointer; text-align: center; }
         input[type="file"] { display: none; }
 
         #editorScreen { display: none; flex: 1; flex-direction: column; height: calc(100vh - 60px); }
         .canvas-container { flex: 1; position: relative; background: #000; overflow: hidden; width: 100%; touch-action: none; }
         #imageToCrop { max-width: 100%; display: block; }
-
-        /* Áp dụng thuật toán sáng nền mặc định */
-        .cropper-view-box img, .cropper-canvas img {
-            filter: contrast(1.45) brightness(1.12) saturate(1.3);
-        }
+        .cropper-view-box img, .cropper-canvas img { filter: contrast(1.45) brightness(1.12) saturate(1.3); }
 
         .toolbar { background: #1e293b; padding: 10px; display: flex; justify-content: space-around; border-top: 1px solid #334155; }
-        .tool-btn { background: #334155; color: #fff; border: none; padding: 10px; border-radius: 8px; font-size: 13px; font-weight: 600; flex: 1; margin: 0 4px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .tool-btn { background: #334155; color: #fff; border: none; padding: 10px; border-radius: 8px; font-size: 13px; font-weight: 600; flex: 1; margin: 0 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; }
         .tool-btn:active { transform: scale(0.95); }
 
         .tilt-menu { display: none; background: #111827; padding: 20px 15px; flex-direction: column; border-top: 1px solid #334155; }
         .tilt-header { color: #9ca3af; font-size: 13px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
-        
         .slider-container { display: flex; align-items: center; gap: 10px; padding: 0 10px; }
         .slider-val { width: 30px; font-size: 12px; font-weight: bold; color: #fbbf24; text-align: center; }
         input[type=range] { flex: 1; -webkit-appearance: none; background: transparent; height: 30px; position: relative; touch-action: none; }
         input[type=range]:focus { outline: none; }
         input[type=range]::before { content: ""; position: absolute; top: 50%; left: 0; right: 0; height: 12px; transform: translateY(-50%); background: repeating-linear-gradient(to right, #64748b 0, #64748b 2px, transparent 2px, transparent 8%); z-index: -1; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 24px; width: 4px; background: #fbbf24; border-radius: 2px; cursor: pointer; margin-top: -6px; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 24px; width: 4px; background: #fbbf24; border-radius: 2px; }
 
-        .tilt-done-btn { background: #3b82f6; color: white; border: none; padding: 10px 0; border-radius: 6px; font-weight: bold; margin-top: 20px; cursor: pointer; font-size: 14px; }
-
+        .tilt-done-btn { background: #3b82f6; color: white; border: none; padding: 10px 0; border-radius: 6px; font-weight: bold; margin-top: 20px; font-size: 14px; }
         .action-bar { background: #0f172a; padding: 12px; display: flex; gap: 10px; }
-        .btn-cancel { background: #ef4444; color: white; border: none; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; flex: 1; cursor: pointer; }
-        .btn-send { background: #22c55e; color: white; border: none; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; flex: 2; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3); cursor: pointer; }
-        
-        /* Cảnh báo Zalo */
-        #zaloWarning { display: none; background: #ef4444; color: white; padding: 15px; margin: 20px; border-radius: 8px; font-size: 14px; font-weight: bold; line-height: 1.5; }
+        .btn-cancel { background: #ef4444; color: white; border: none; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; flex: 1; }
+        .btn-send { background: #22c55e; color: white; border: none; padding: 14px; border-radius: 10px; font-size: 16px; font-weight: bold; flex: 2; box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3); }
     </style>
 </head>
 <body>
 
     <div class="header">
         <h3>MÁY SCAN ĐIỆN TÂM ĐỒ (EKG)</h3>
-        <p id="status">🔄 Đang thiết lập đường truyền...</p>
+        <p id="status">Vui lòng cấp quyền Camera...</p>
     </div>
 
     <div id="startScreen">
-        <div id="zaloWarning">
-            ⚠️ BẠN ĐANG MỞ BẰNG ZALO/FACEBOOK<br><br>
-            Các ứng dụng này chặn camera và đường truyền nội bộ.<br>
-            Vui lòng nhấn vào dấu 3 chấm (góc trên bên phải) và chọn "Mở bằng trình duyệt" (Safari/Chrome).
-        </div>
-        
         <label for="fileInput" class="camera-btn" id="uploadLabel">📸 Mở Camera Chụp EKG</label>
         <input type="file" id="fileInput" accept="image/*" capture="environment">
         <p style="margin-top: 20px; font-size: 13px; color: #64748b; max-width: 280px;">
-            Mẹo: Chụp ngang điện thoại và tự do vẽ khung chọn vùng băng giấy điện tim để ảnh rõ nét nhất.
+            Mẹo: Chụp ngang điện thoại và tự do vẽ khung chọn vùng điện tim để ảnh rõ nét nhất.
         </p>
     </div>
 
     <div id="editorScreen">
-        <div class="canvas-container" id="cropContainer">
-            <img id="imageToCrop" src="">
-        </div>
+        <div class="canvas-container" id="cropContainer"><img id="imageToCrop" src=""></div>
         
         <div class="toolbar" id="mainToolbar">
-            <button class="tool-btn" onclick="rotateImg()">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                Xoay
-            </button>
-            <button class="tool-btn" onclick="clearCrop()">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                Đặt lại
-            </button>
-            <button class="tool-btn" onclick="openTiltMenu()">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
-                Độ nghiêng
-            </button>
+            <button class="tool-btn" onclick="rotateImg()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>Xoay</button>
+            <button class="tool-btn" onclick="clearCrop()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>Đặt lại</button>
+            <button class="tool-btn" onclick="openTiltMenu()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="3" y1="12" x2="21" y2="12"/></svg>Độ nghiêng</button>
         </div>
 
         <div class="tilt-menu" id="tiltMenu">
@@ -144,198 +96,91 @@
         const tiltSlider = document.getElementById('tiltSlider');
         const sliderValDisplay = document.getElementById('sliderValDisplay');
         const btnSend = document.getElementById('btnSend');
-        const zaloWarning = document.getElementById('zaloWarning');
 
         let cropper = null;
-        let conn = null;
         let baseRotation = 0;
         let tiltRotation = 0;
+        
+        // Lấy Session ID từ URL (để biết cần gửi ảnh vào ống mạng nào)
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('session');
+        const FIREBASE_URL = "https://my-qr-upload-default-rtdb.firebaseio.com";
 
-        // KIỂM TRA TRÌNH DUYỆT IN-APP (ZALO/FB)
-        const ua = navigator.userAgent || navigator.vendor || window.opera;
-        if (ua.indexOf("Zalo") > -1 || ua.indexOf("FB") > -1 || ua.indexOf("Messenger") > -1) {
-            zaloWarning.style.display = "block";
-            statusEl.innerText = "❌ Bị chặn bởi Zalo/FB";
+        if (!sessionId) {
+            statusEl.innerText = "❌ Lỗi: Vui lòng quét mã QR từ máy tính!";
             statusEl.style.color = "#ef4444";
         } else {
-            const urlParams = new URLSearchParams(window.location.search);
-            const targetPeerId = urlParams.get('peer');
-
-            if (!targetPeerId) {
-                statusEl.innerText = "❌ Lỗi: Vui lòng quét mã QR lại từ máy tính!";
-                statusEl.style.color = "#ef4444";
-            } else {
-                const peer = new Peer({
-                    config: {
-                        'iceServers': [
-                            { urls: 'stun:stun.l.google.com:19302' },
-                            { urls: 'stun:stun1.l.google.com:19302' },
-                            { urls: 'stun:stun2.l.google.com:19302' }
-                        ]
-                    }
-                });
-
-                peer.on('open', () => {
-                    statusEl.innerText = "Đang tìm máy tính trong mạng...";
-                    let isConnected = false;
-                    setTimeout(() => {
-                        if (!isConnected) {
-                            statusEl.innerText = "❌ Mạng bệnh viện chặn. Hãy tắt Wi-Fi, dùng 4G và F5 lại trang trên máy tính!";
-                            statusEl.style.color = "#ef4444";
-                        }
-                    }, 8000);
-
-                    conn = peer.connect(targetPeerId, { reliable: true });
-                    
-                    conn.on('open', () => {
-                        isConnected = true;
-                        statusEl.innerText = "✅ Đã kết nối máy tính! Sẵn sàng chụp.";
-                        statusEl.style.color = "#4ade80";
-                        uploadLabel.style.display = "block";
-                    });
-
-                    conn.on('close', () => {
-                        statusEl.innerText = "❌ Đã ngắt kết nối với máy tính.";
-                        statusEl.style.color = "#ef4444";
-                        uploadLabel.style.display = "none";
-                    });
-                });
-
-                peer.on('error', (err) => {
-                    statusEl.innerText = "❌ Lỗi kết nối P2P: " + err.type;
-                    statusEl.style.color = "#ef4444";
-                });
-            }
+            statusEl.innerText = "✅ Sẵn sàng! Hãy chụp EKG.";
+            statusEl.style.color = "#4ade80";
+            uploadLabel.style.display = "block";
         }
 
-        // Khởi tạo Cropper
+        // Các hàm xử lý ảnh Cropper giữ nguyên 100% bản chuẩn
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = (event) => {
                 startScreen.style.display = 'none';
                 editorScreen.style.display = 'flex';
                 statusEl.innerText = "✂️ Vuốt tự do để vẽ khung điện tim";
-
                 imageToCrop.src = event.target.result;
-
                 if (cropper) cropper.destroy();
-                
-                baseRotation = 0;
-                tiltRotation = 0;
-                tiltSlider.value = 0;
-                sliderValDisplay.innerText = "0";
-                
-                cropper = new Cropper(imageToCrop, {
-                    viewMode: 1,
-                    dragMode: 'crop',
-                    autoCrop: false,
-                    restore: false,
-                    guides: true,
-                    center: true,
-                    highlight: false,
-                    cropBoxMovable: true,
-                    cropBoxResizable: true,
-                    toggleDragModeOnDblclick: false
-                });
+                baseRotation = 0; tiltRotation = 0; tiltSlider.value = 0; sliderValDisplay.innerText = "0";
+                cropper = new Cropper(imageToCrop, { viewMode: 1, dragMode: 'crop', autoCrop: false, restore: false, guides: true, center: true, highlight: false, cropBoxMovable: true, cropBoxResizable: true, toggleDragModeOnDblclick: false });
             };
             reader.readAsDataURL(file);
         });
 
-        function applyTransformations() {
-            if (cropper) {
-                cropper.rotateTo(baseRotation + tiltRotation);
-            }
-        }
+        function applyTransformations() { if (cropper) cropper.rotateTo(baseRotation + tiltRotation); }
+        function rotateImg() { if (!cropper) return; baseRotation -= 90; applyTransformations(); }
+        function clearCrop() { if (cropper) { baseRotation = 0; tiltRotation = 0; tiltSlider.value = 0; sliderValDisplay.innerText = "0"; cropper.clear(); cropper.reset(); applyTransformations(); } }
+        function cancelEdit() { if (cropper) { cropper.destroy(); cropper = null; } fileInput.value = ""; editorScreen.style.display = 'none'; startScreen.style.display = 'flex'; statusEl.innerText = "✅ Sẵn sàng chụp ảnh mới."; }
+        function openTiltMenu() { mainToolbar.style.display = 'none'; actionBar.style.display = 'none'; tiltMenu.style.display = 'flex'; tiltSlider.value = tiltRotation; sliderValDisplay.innerText = tiltRotation; }
+        function closeTiltMenu() { tiltMenu.style.display = 'none'; mainToolbar.style.display = 'flex'; actionBar.style.display = 'flex'; }
+        tiltSlider.addEventListener('input', function(e) { tiltRotation = parseInt(e.target.value); sliderValDisplay.innerText = tiltRotation; applyTransformations(); });
 
-        function rotateImg() {
-            if (!cropper) return;
-            baseRotation -= 90;
-            applyTransformations();
-        }
-
-        function clearCrop() {
-            if (cropper) {
-                baseRotation = 0;
-                tiltRotation = 0;
-                tiltSlider.value = 0;
-                sliderValDisplay.innerText = "0";
-                cropper.clear();
-                cropper.reset();
-                applyTransformations();
-            }
-        }
-
-        function cancelEdit() {
-            if (cropper) { cropper.destroy(); cropper = null; }
-            fileInput.value = "";
-            editorScreen.style.display = 'none';
-            startScreen.style.display = 'flex';
-            statusEl.innerText = "✅ Sẵn sàng chụp ảnh mới.";
-        }
-
-        function openTiltMenu() {
-            mainToolbar.style.display = 'none';
-            actionBar.style.display = 'none';
-            tiltMenu.style.display = 'flex';
-            tiltSlider.value = tiltRotation;
-            sliderValDisplay.innerText = tiltRotation;
-        }
-
-        function closeTiltMenu() {
-            tiltMenu.style.display = 'none';
-            mainToolbar.style.display = 'flex';
-            actionBar.style.display = 'flex';
-        }
-
-        tiltSlider.addEventListener('input', function(e) {
-            tiltRotation = parseInt(e.target.value);
-            sliderValDisplay.innerText = tiltRotation;
-            applyTransformations();
-        });
-
-        function processAndSend() {
-            if (!cropper || !conn) return;
-            
+        // NÂNG CẤP GỬI ẢNH QUA FIREBASE
+        async function processAndSend() {
+            if (!cropper || !sessionId) return;
             const cropData = cropper.getCropBoxData();
             if (Object.keys(cropData).length === 0 || cropData.width === 0) {
                 alert("Vui lòng vuốt tay lên ảnh để khoanh vùng băng giấy điện tim trước khi gửi!");
                 return;
             }
 
-            btnSend.innerText = "⏳ Đang xử lý...";
+            btnSend.innerText = "⏳ Đang gửi lên HIS...";
             btnSend.disabled = true;
 
-            const croppedCanvas = cropper.getCroppedCanvas({
-                maxWidth: 1600,
-                maxHeight: 1600,
-                imageSmoothingEnabled: true,
-                imageSmoothingQuality: 'high'
-            });
-
+            const croppedCanvas = cropper.getCroppedCanvas({ maxWidth: 1600, maxHeight: 1600, imageSmoothingEnabled: true, imageSmoothingQuality: 'high' });
             const finalCanvas = document.createElement('canvas');
-            finalCanvas.width = croppedCanvas.width;
-            finalCanvas.height = croppedCanvas.height;
+            finalCanvas.width = croppedCanvas.width; finalCanvas.height = croppedCanvas.height;
             const ctx = finalCanvas.getContext('2d');
-
             ctx.filter = 'contrast(1.45) brightness(1.12) saturate(1.3)';
             ctx.drawImage(croppedCanvas, 0, 0);
 
             const dataUrl = finalCanvas.toDataURL('image/jpeg', 0.80);
-            conn.send({
-                fileName: "EKG_Scanned_" + Date.now() + ".jpg",
-                fileType: "image/jpeg",
-                dataUrl: dataUrl
-            });
 
-            setTimeout(() => {
-                statusEl.innerText = "✅ Đã gửi ảnh sang máy tính!";
+            try {
+                // Đẩy dữ liệu lên Firebase Database trung gian
+                const response = await fetch(`${FIREBASE_URL}/sessions/${sessionId}.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: dataUrl })
+                });
+
+                if (response.ok) {
+                    statusEl.innerText = "✅ Đã gửi ảnh sang máy tính!";
+                    setTimeout(cancelEdit, 1500);
+                } else {
+                    throw new Error("Mạng chập chờn");
+                }
+            } catch (error) {
+                alert("Lỗi khi gửi ảnh: " + error.message);
+            } finally {
                 btnSend.innerText = "🚀 Gửi Ảnh Lên HIS";
                 btnSend.disabled = false;
-                cancelEdit();
-            }, 400);
+            }
         }
     </script>
 </body>
